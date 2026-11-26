@@ -8875,7 +8875,7 @@ if m.genL then m.genL.Text = fmtGen(pet.mps or 0) end
 end
 task.spawn(function()
 local KEEP_R = 60 -- AYDN: an old highest keeps its tag only while 60+ studs far
-local MAX_KEEP = 2 -- never let old-highest trackers clutter the ESP
+local MAX_KEEP = 1 -- never let old-highest trackers clutter the ESP
 local keepers = {} -- uid -> { pet = pet, at = os.clock() }
 local lastBestUid = nil
 local function hrpPos()
